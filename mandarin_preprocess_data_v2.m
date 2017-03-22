@@ -144,6 +144,8 @@ if make_dat_struct_flag
     end
     dat.gridOrient = [];
     dat.badChans = badChans;
+
+    save([rootdir '/' subj '/' subj '_dat.mat'],'dat','-v7.3');
 end
 
 %%
