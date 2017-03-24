@@ -112,7 +112,17 @@ if make_dat_struct_flag
         end
     end
     
+    dat.hg_stim = [];
+    
+    dirlist = dir([rootdir '/' subj '/' subj '_' blocks{b} '/HilbAA_70to150_8band/']);
+    dirlist = dirlist(~[dirlist.isdir]);
+    [~,fs] = readhtk([rootdir '/' subj '/' subj '_' blocks{b} '/HilbAA_70to150_8band/' dirlist(1).name]);
+    dat.hg_stim = NaN(length(dirlist),...
+        length(round((evnts(1).StartTime * fs/4) - (timeLim(1) * fs/4)):round((evnts(1).StartTime * fs/4) + (timeLim(2) * fs/4))),...
+        length(dat.behav.trial));
+    
     for b = 1:length(blocks)
+        fprintf('Block [%d] of [%d]\n',b,length(blocks));
         dirlist = dir([rootdir '/' subj '/' subj '_' blocks{b} '/HilbAA_70to150_8band/']);
         dirlist = dirlist(~[dirlist.isdir]);
         
@@ -124,14 +134,9 @@ if make_dat_struct_flag
         fclose(fid);
         
         badTrials = Find_bad_trials(rootdir,subj,blocks{b},[evnts.StartTime],timeLim);
-                
-        [~,fs] = readhtk([rootdir '/' subj '/' subj '_' blocks{b} '/HilbAA_70to150_8band/' dirlist(1).name]);
-        dat.hg_stim = NaN(length(dirlist),...
-            length(round((evnts(1).StartTime * fs/4) - (timeLim(1) * fs/4)):round((evnts(1).StartTime * fs/4) + (timeLim(2) * fs/4))),...
-            length(evnts) - length(badTrials));
-        
+                                
         for i = 1:length(dirlist)
-            fprintf('Channel [%d] of [%d]\n',i,length(dirlist));
+%             fprintf('Channel [%d] of [%d]\n',i,length(dirlist));
             [d,fs] = readhtk([rootdir '/' subj '/' subj '_' blocks{b} '/HilbAA_70to150_8band/' dirlist(i).name]);
             d = mean(d,1);
             
@@ -142,7 +147,11 @@ if make_dat_struct_flag
             d = resample(d,1,4);
             fs = fs / 4;
             
-            k = 1;
+            if b == 1
+                k = 1;
+            else
+                k = length(find(dat.behav.block == 1:b-1))+1;
+            end
             for j = 1:size(evnts,2)
                 if ~ismember(j,badTrials)
                     dat.hg_stim(i,:,k) = d(round((evnts(j).StartTime * fs) - (timeLim(1) * fs)):round((evnts(j).StartTime * fs) + (timeLim(2) * fs)));
@@ -162,7 +171,10 @@ if make_dat_struct_flag
     end
     dat.gridOrient = [];
     dat.badChans = badChans;
+    
+    save([rootdir '/../../../userdata/matt_l/mandarin/' subj '/data/' subj '_dat.mat'],'dat','-v7.3');
 end
+
 
 %%
 %% PLOTTING
