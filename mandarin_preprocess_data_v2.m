@@ -1,14 +1,15 @@
-subj = 'EC143';
-blocks = {'B21','B22','B23','B24','B26','B27','B32','B33'};
+subj = 'EC131';
+blocks = {'B9','B10','B11','B16','B17','B18','B22','B23','B24','B39','B40','B41','B51','B52','B53'};
 % behav_blocks = [1 2 3 4 5 6 ];
-behav_ecog_correspondence = [1 21 ; 2 22 ; 3 23 ; 4 24 ; 5 26 ; 6 27 ; 7 32 ; 8 32 ; 9 32 ; 10 33 ; 11 33 ; 12 33];
+% behav_ecog_correspondence = [1 21 ; 2 22 ; 3 23 ; 4 24 ; 5 26 ; 6 27 ; 7 32 ; 8 32 ; 9 32 ; 10 33 ; 11 33 ; 12 33]; % EC143
+behav_ecog_correspondence = [1 9 ; 2 10 ; 3 11 ; 4 16 ; 5 17 ; 6 18 ; 1 22 ; 2 23 ; 3 24 ; 4 39 ; 5 40 ; 6 41 ; 1 51 ; 2 52 ; 3 53]; % EC131
 hemi = 'lh';
 
 rootdir = '/Users/mattleonard/Documents/Research/pia/data_store1/human/prcsd_data';
 
 % flags
 tanh_flag = 0;                  % whether to perform tahn transform to fix outliers
-find_events_flag = 1;           % whether to find events in ANIN channels
+find_events_flag = 0;           % whether to find events in ANIN channels
 make_dat_struct_flag = 1;       % whether to make dat structure
     prestim_zscore_flag = 1;        % whether to z-score relative to pre-stim
 plot_all_elecs_flag = 0;        % whether to plot average ERPs for all channels
@@ -49,41 +50,44 @@ end
 
 %% FIND EVENTS
 
+load([rootdir '/../../../../data/' subj '/mandarin/behavior/' subj '_behav.mat']);
+
 if find_events_flag
     
-    load([rootdir '/../../../../data/' subj '/mandarin/behavior/' subj '_behav.mat']);
     allEvents = [];
     
     for b = 1:length(blocks)
-        dirlist = dir([rootdir '/' subj '/' subj '_' blocks{b} '/HilbAA_70to150_8band/']);
-        dirlist = dirlist(~[dirlist.isdir]);
-        
-        evnts = [];
-%         load([rootdir '/' subj '/' subj '_' blocks{b} '/Artifacts/badTimeSegments.mat']);
-%         load([rootdir '/' subj '/' subj '_' blocks{b} '/Analog/allEventTimes.mat']);
-        
-        % get stimuli for this ECoG block
-        stimlist = [];
-        behav_blocks = find(behav_ecog_correspondence(:,2) == str2double(blocks{b}(2:end)));
-        block_idx = find(ismember(behav.block,behav_blocks));
-        
-        for i = 1:length(block_idx)
-            stimlist{i} = [behav.syllable{block_idx(i)} num2str(behav.tone(block_idx(i))) '-' behav.speaker{block_idx(i)} 'N'];
+        if ~exist([rootdir '/' subj '/' subj '_' blocks{b} '/Analog/evnts.mat'])
+            dirlist = dir([rootdir '/' subj '/' subj '_' blocks{b} '/HilbAA_70to150_8band/']);
+            dirlist = dirlist(~[dirlist.isdir]);
+            
+            evnts = [];
+            %         load([rootdir '/' subj '/' subj '_' blocks{b} '/Artifacts/badTimeSegments.mat']);
+            %         load([rootdir '/' subj '/' subj '_' blocks{b} '/Analog/allEventTimes.mat']);
+            
+            % get stimuli for this ECoG block
+            stimlist = [];
+            behav_blocks = find(behav_ecog_correspondence(:,2) == str2double(blocks{b}(2:end)));
+            block_idx = find(ismember(behav.block,behav_blocks));
+            
+            for i = 1:length(block_idx)
+                stimlist{i} = [behav.syllable{block_idx(i)} num2str(behav.tone(block_idx(i))) '-' behav.speaker{block_idx(i)} 'N'];
+            end
+            
+            evnt = DetectEventsQuick_phonrest([rootdir '/' subj '/' subj '_' blocks{b}],...
+                '/Users/mattleonard/Documents/Research/tasks/ToneCat_ptb3/FindEvents',...
+                {[subj '_' blocks{b}]},...
+                stimlist,...
+                stimlist,...
+                3,...
+                [],...
+                1);
+            
+            evnts = [evnts evnt];
+            allEvents = [allEvents evnts];
+            
+            save([rootdir '/' subj '/' subj '_' blocks{b} '/Analog/evnts.mat'],'evnts','-v7.3');
         end
-        
-        evnt = DetectEventsQuick_phonrest([rootdir '/' subj '/' subj '_' blocks{b}],...
-            '/Users/mattleonard/Documents/Research/tasks/ToneCat_ptb3/FindEvents',...
-            {[subj '_' blocks{b}]},...
-            stimlist,...
-            stimlist,...
-            2,...
-            [],...
-            1);
-        
-        evnts = [evnts evnt];
-        allEvents = [allEvents evnts];
-        
-        save([rootdir '/' subj '/' subj '_' blocks{b} '/Analog/evnts.mat'],'evnts','-v7.3');
     end
 end
 
@@ -93,6 +97,20 @@ if make_dat_struct_flag
     dat.subj = subj;
     dat.hemi = hemi;
     dat.behav = behav;
+
+    % remove bad trials from dat.behav field
+    for b = length(blocks):-1:1
+        load([rootdir '/' subj '/' subj '_' blocks{b} '/Analog/evnts.mat']);
+        badTrials = Find_bad_trials(rootdir,subj,blocks{b},[evnts.StartTime],timeLim);
+        block_trials = find(dat.behav.block == find(behav_ecog_correspondence(:,2) == str2double(blocks{b}(2:end))));
+        
+        flds = fieldnames(dat.behav);
+        for i = 1:length(flds)
+            for j = length(badTrials):-1:1
+                dat.behav.(flds{i})(block_trials(badTrials(j))) = [];
+            end
+        end
+    end
     
     for b = 1:length(blocks)
         dirlist = dir([rootdir '/' subj '/' subj '_' blocks{b} '/HilbAA_70to150_8band/']);
@@ -106,7 +124,7 @@ if make_dat_struct_flag
         fclose(fid);
         
         badTrials = Find_bad_trials(rootdir,subj,blocks{b},[evnts.StartTime],timeLim);
-        
+                
         [~,fs] = readhtk([rootdir '/' subj '/' subj '_' blocks{b} '/HilbAA_70to150_8band/' dirlist(1).name]);
         dat.hg_stim = NaN(length(dirlist),...
             length(round((evnts(1).StartTime * fs/4) - (timeLim(1) * fs/4)):round((evnts(1).StartTime * fs/4) + (timeLim(2) * fs/4))),...
@@ -144,8 +162,6 @@ if make_dat_struct_flag
     end
     dat.gridOrient = [];
     dat.badChans = badChans;
-
-    save([rootdir '/' subj '/' subj '_dat.mat'],'dat','-v7.3');
 end
 
 %%
