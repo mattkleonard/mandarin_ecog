@@ -1,11 +1,20 @@
+%% TO DO: Add time_axis field to dat struct, read behav_ecog corresp
+
 subj = 'EC131';
 blocks = {'B9','B10','B11','B16','B17','B18','B22','B23','B24','B39','B40','B41','B51','B52','B53'};
 % behav_blocks = [1 2 3 4 5 6 ];
 % behav_ecog_correspondence = [1 21 ; 2 22 ; 3 23 ; 4 24 ; 5 26 ; 6 27 ; 7 32 ; 8 32 ; 9 32 ; 10 33 ; 11 33 ; 12 33]; % EC143
 behav_ecog_correspondence = [1 9 ; 2 10 ; 3 11 ; 4 16 ; 5 17 ; 6 18 ; 1 22 ; 2 23 ; 3 24 ; 4 39 ; 5 40 ; 6 41 ; 1 51 ; 2 52 ; 3 53]; % EC131
 hemi = 'lh';
+local_dir_flag = 1;
 
-rootdir = '/Users/mattleonard/Documents/Research/pia/data_store1/human/prcsd_data';
+if ~local_dir_flag
+    rootdir = '/Users/mattleonard/Documents/Research/pia/data_store1/human/prcsd_data';
+else
+    rootdir = '/data_store1/human/prcsd_data';
+    addpath(genpath('/home/matt_l/matlab/mandarin_ecog'))
+    addpath(genpath('/home/matt_l/matlab/prelimAnalysis_ALL'))
+end
 
 % flags
 tanh_flag = 0;                  % whether to perform tahn transform to fix outliers
@@ -16,7 +25,7 @@ plot_all_elecs_flag = 0;        % whether to plot average ERPs for all channels
     plot_raster_flag = 0;           % whether to plot single trial rasters
 
 % time variables
-timeLim = [1 1];                        % time limits (sec) of epoching
+timeLim = [0.5 1];                      % time limits (sec) of epoching
 taxis = -timeLim(1):1/100:timeLim(2);   % create time axis
 prestim_zscore_time = [-0.5 0];         % time window to use for pre-stim z-score
 
@@ -32,23 +41,13 @@ clr = [0.667, 0.224, 0.224 ; 0.176, 0.533, 0.176 ; 0.133, 0.40, 0.40 ; 0.667, 0.
 
 %% GET BEHAV
 
-load([rootdir '/../../../../data/' subj '/mandarin/behavior/' subj '_behav.mat']);
-
-[num,txt,raw] = xlsread('/Users/mattleonard/Documents/Research/tasks/ToneCat_ptb3/CVonset.xlsx');
-
-stims = unique(raw(2:end,6));
-
-for i = 1:length(stims)
-    idx = find(strcmpi(stims{i},raw(:,6)));
-    stimInfo.stim{i} = raw{idx(1),6};
-    stimInfo.c{i} = raw{idx(1),3}(1);
-    stimInfo.v{i} = raw{idx(2),3}(2);
-    stimInfo.tone{i} = num2str(raw{idx(1),4});
-    stimInfo.speaker{i} = raw{idx(1),5};
-    stimInfo.c_onset(i) = raw{idx(1),1};
-    stimInfo.v_onset(i) = raw{idx(2),1};
+if ~local_dir_flag
+    load([rootdir '/../../../../data/' subj '/mandarin/behavior/' subj '_behav.mat']);
+    load([rootdir '/../../../home/matt_l/matlab/mandarin_ecog/stimInfo.mat']);
+else
+    load([rootdir '/' subj '/mandarin/behavior/' subj '_behav.mat']);
+    load([rootdir '/../../../home/matt_l/matlab/mandarin_ecog/stimInfo.mat']);
 end
-
 
 %% REMOVE ARTIFACTS USING TANH
 
@@ -104,7 +103,11 @@ if find_events_flag
             evnts = [evnts evnt];
             allEvents = [allEvents evnts];
             
-            save([rootdir '/' subj '/' subj '_' blocks{b} '/Analog/evnts.mat'],'evnts','-v7.3');
+            if ~local_dir_flag
+                save([rootdir '/' subj '/' subj '_' blocks{b} '/Analog/evnts.mat'],'evnts','-v7.3');
+            else
+                save([rootdir '/../../../userdata/matt_l/mandarin/' subj '/data/' subj '_dat.mat'],'dat','-v7.3');
+            end
         end
     end
 end
@@ -224,6 +227,7 @@ if make_dat_struct_flag
     end
     dat.gridOrient = [];
     dat.badChans = badChans;
+    dat.time_axis = taxis;
     
     save([rootdir '/../../../userdata/matt_l/mandarin/' subj '/data/' subj '_dat.mat'],'dat','-v7.3');
 end
