@@ -1,4 +1,4 @@
-%% TO DO: Add time_axis field to dat struct, read behav_ecog corresp
+%% TO DO: read behav_ecog corresp
 
 subj = 'EC131';
 blocks = {'B9','B10','B11','B16','B17','B18','B22','B23','B24','B39','B40','B41','B51','B52','B53'};
