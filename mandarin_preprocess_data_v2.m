@@ -1,12 +1,13 @@
 %% TO DO: read behav_ecog corresp
 
-subj = 'EC131';
-blocks = {'B9','B10','B11','B16','B17','B18','B22','B23','B24','B39','B40','B41','B51','B52','B53'};
+subj = 'EC133';
+blocks = {'B4','B6','B10','B12','B48','B53','B58','B65'};
 % behav_blocks = [1 2 3 4 5 6 ];
 % behav_ecog_correspondence = [1 21 ; 2 22 ; 3 23 ; 4 24 ; 5 26 ; 6 27 ; 7 32 ; 8 32 ; 9 32 ; 10 33 ; 11 33 ; 12 33]; % EC143
-behav_ecog_correspondence = [1 9 ; 2 10 ; 3 11 ; 4 16 ; 5 17 ; 6 18 ; 1 22 ; 2 23 ; 3 24 ; 4 39 ; 5 40 ; 6 41 ; 1 51 ; 2 52 ; 3 53]; % EC131
+% behav_ecog_correspondence = [1 9 ; 2 10 ; 3 11 ; 4 16 ; 5 17 ; 6 18 ; 1 22 ; 2 23 ; 3 24 ; 4 39 ; 5 40 ; 6 41 ; 1 51 ; 2 52 ; 3 53]; % EC131
+behav_ecog_correspondence = [4 4 ; 1 6 ; 2 10 ; 3 12 ; 5 148 ; 6 53 ; 1 58 ; 2 65]; % EC133
 hemi = 'lh';
-local_dir_flag = 1;
+local_dir_flag = 0;
 
 if ~local_dir_flag
     rootdir = '/Users/mattleonard/Documents/Research/pia/data_store1/human/prcsd_data';
@@ -19,6 +20,7 @@ end
 % flags
 tanh_flag = 0;                  % whether to perform tahn transform to fix outliers
 find_events_flag = 0;           % whether to find events in ANIN channels
+    anin_to_use = 3;            % which ANIN channel to use for event finding
 make_dat_struct_flag = 1;       % whether to make dat structure
     prestim_zscore_flag = 1;        % whether to z-score relative to pre-stim
 plot_all_elecs_flag = 0;        % whether to plot average ERPs for all channels
@@ -123,7 +125,11 @@ if make_dat_struct_flag
     for b = length(blocks):-1:1
         load([rootdir '/' subj '/' subj '_' blocks{b} '/Analog/evnts.mat']);
         badTrials = Find_bad_trials(rootdir,subj,blocks{b},[evnts.StartTime],timeLim);
-        block_trials = find(dat.behav.block == find(behav_ecog_correspondence(:,2) == str2double(blocks{b}(2:end))));
+        block_trials = [];
+        idx_block_nums = find(behav_ecog_correspondence(:,2) == str2double(blocks{b}(2:end)));
+        for i = 1:length(idx_block_nums)
+            block_trials = [block_trials ; find(dat.behav.block == idx_block_nums(i))];
+        end
         
         flds = fieldnames(dat.behav);
         for i = 1:length(flds)
@@ -165,7 +171,7 @@ if make_dat_struct_flag
         
         badTrials = Find_bad_trials(rootdir,subj,blocks{b},[evnts.StartTime],timeLim);
                                 
-        for i = 1:length(dirlist)
+        for i = 1:5 %length(dirlist)
 %             fprintf('Channel [%d] of [%d]\n',i,length(dirlist));
             [d,fs] = readhtk([rootdir '/' subj '/' subj '_' blocks{b} '/HilbAA_70to150_8band/' dirlist(i).name]);
             d = mean(d,1);
@@ -180,7 +186,7 @@ if make_dat_struct_flag
             if b == 1
                 k = 1;
             else
-                k = length(find(dat.behav.block == 1:b-1))+1;
+                k = length(find(ismember(dat.behav.block,1:b-1)))+1;
             end
             for j = 1:size(evnts,2)
                 if ~ismember(j,badTrials)
