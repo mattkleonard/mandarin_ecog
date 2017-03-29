@@ -1,11 +1,12 @@
 %% TO DO: read behav_ecog corresp
 
-subj = 'EC133';
-blocks = {'B4','B6','B10','B12','B48','B53','B58','B65'};
+subj = 'EC131';
+blocks = {'B9','B10','B11','B16','B17','B18','B22','B23','B24','B39','B40','B41','B51','B52','B53'};
+% blocks = {'B4','B6','B10','B12','B48','B53','B58','B65'};
 % behav_blocks = [1 2 3 4 5 6 ];
 % behav_ecog_correspondence = [1 21 ; 2 22 ; 3 23 ; 4 24 ; 5 26 ; 6 27 ; 7 32 ; 8 32 ; 9 32 ; 10 33 ; 11 33 ; 12 33]; % EC143
-% behav_ecog_correspondence = [1 9 ; 2 10 ; 3 11 ; 4 16 ; 5 17 ; 6 18 ; 1 22 ; 2 23 ; 3 24 ; 4 39 ; 5 40 ; 6 41 ; 1 51 ; 2 52 ; 3 53]; % EC131
-behav_ecog_correspondence = [4 4 ; 1 6 ; 2 10 ; 3 12 ; 5 148 ; 6 53 ; 1 58 ; 2 65]; % EC133
+behav_ecog_correspondence = [1 9 ; 2 10 ; 3 11 ; 4 16 ; 5 17 ; 6 18 ; 1 22 ; 2 23 ; 3 24 ; 4 39 ; 5 40 ; 6 41 ; 1 51 ; 2 52 ; 3 53]; % EC131
+% behav_ecog_correspondence = [4 4 ; 1 6 ; 2 10 ; 3 12 ; 5 148 ; 6 53 ; 1 58 ; 2 65]; % EC133
 hemi = 'lh';
 local_dir_flag = 0;
 
@@ -40,6 +41,9 @@ acc = [0 1]; % [0 1];
 
 % colors
 clr = [0.667, 0.224, 0.224 ; 0.176, 0.533, 0.176 ; 0.133, 0.40, 0.40 ; 0.667, 0.424, 0.224 ; 0.863 0.502 0.698];
+
+% Wav file naming conventions
+nChans_per_wav = 64;
 
 %% GET BEHAV
 
@@ -159,8 +163,16 @@ if make_dat_struct_flag
 
     for b = 1:length(blocks)
         fprintf('Block [%d] of [%d]\n',b,length(blocks));
-        dirlist = dir([rootdir '/' subj '/' subj '_' blocks{b} '/HilbAA_70to150_8band/']);
-        dirlist = dirlist(~[dirlist.isdir]);
+        dirlist_tmp = dir([rootdir '/' subj '/' subj '_' blocks{b} '/HilbAA_70to150_8band/']);
+        dirlist_tmp = dirlist_tmp(~[dirlist_tmp.isdir]);
+        i = 1;
+        for nWav = 1:length(dirlist_tmp)/nChans_per_wav
+            for nChan = 1:nChans_per_wav
+                chan_idx = find(strcmpi(['Wav' num2str(nWav) num2str(nChan) '.htk'],{dirlist_tmp.name}));
+                dirlist(i) = dirlist_tmp(chan_idx);
+                i = i + 1;
+            end
+        end
         
         load([rootdir '/' subj '/' subj '_' blocks{b} '/Analog/evnts.mat']);
         
@@ -171,7 +183,7 @@ if make_dat_struct_flag
         
         badTrials = Find_bad_trials(rootdir,subj,blocks{b},[evnts.StartTime],timeLim);
                                 
-        for i = 1:5 %length(dirlist)
+        for i = 1:length(dirlist)
 %             fprintf('Channel [%d] of [%d]\n',i,length(dirlist));
             [d,fs] = readhtk([rootdir '/' subj '/' subj '_' blocks{b} '/HilbAA_70to150_8band/' dirlist(i).name]);
             d = mean(d,1);
