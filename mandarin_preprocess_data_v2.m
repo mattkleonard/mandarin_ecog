@@ -1,12 +1,15 @@
 %% TO DO: read behav_ecog corresp
 
-subj = 'EC131';
-blocks = {'B9','B10','B11','B16','B17','B18','B22','B23','B24','B39','B40','B41','B51','B52','B53'};
-% blocks = {'B4','B6','B10','B12','B48','B53','B58','B65'};
+subj = 'EC137';
+% blocks = {'B9','B10','B11','B16','B17','B18','B22','B23','B24','B39','B40','B41','B51','B52','B53'}; %EC131
+% blocks = {'B4','B6','B10','B12','B148','B53','B58','B65'}; % EC133
+blocks = {'B18','B19','B20','B23','B24','B25','B30','B31','B32','B37','B58','B59','B60','B61','B62','B63','B68','B69','B77'}; % EC137
 % behav_blocks = [1 2 3 4 5 6 ];
 % behav_ecog_correspondence = [1 21 ; 2 22 ; 3 23 ; 4 24 ; 5 26 ; 6 27 ; 7 32 ; 8 32 ; 9 32 ; 10 33 ; 11 33 ; 12 33]; % EC143
-behav_ecog_correspondence = [1 9 ; 2 10 ; 3 11 ; 4 16 ; 5 17 ; 6 18 ; 1 22 ; 2 23 ; 3 24 ; 4 39 ; 5 40 ; 6 41 ; 1 51 ; 2 52 ; 3 53]; % EC131
+% behav_ecog_correspondence = [1 9 ; 2 10 ; 3 11 ; 4 16 ; 5 17 ; 6 18 ; 1 22 ; 2 23 ; 3 24 ; 4 39 ; 5 40 ; 6 41 ; 1 51 ; 2 52 ; 3 53]; % EC131
 % behav_ecog_correspondence = [4 4 ; 1 6 ; 2 10 ; 3 12 ; 5 148 ; 6 53 ; 1 58 ; 2 65]; % EC133
+behav_ecog_correspondence = [1 18 ; 2 19 ; 3 20 ; 1 23 ; 2 24 ; 3 25 ; 4 30 ; 5 31 ; 6 32 ; 5 37 ; 1 58 ; 6 59 ; 1 60 ; 2 61 ; 3 62 ; 4 63 ; 5 68 ; 6 69 ; 1 77]; % EC137
+task_ver = 'adaptive';
 hemi = 'lh';
 local_dir_flag = 0;
 
@@ -14,18 +17,20 @@ if ~local_dir_flag
     rootdir = '/Users/mattleonard/Documents/Research/pia/data_store1/human/prcsd_data';
 else
     rootdir = '/data_store1/human/prcsd_data';
-    addpath(genpath('/home/matt_l/matlab/mandarin_ecog'))
+%     addpath(genpath('/home/matt_l/matlab/mandarin_ecog'))
     addpath(genpath('/home/matt_l/matlab/prelimAnalysis_ALL'))
 end
 
 % flags
 tanh_flag = 0;                  % whether to perform tahn transform to fix outliers
 find_events_flag = 0;           % whether to find events in ANIN channels
-    anin_to_use = 3;            % which ANIN channel to use for event finding
+    anin_to_use = 2;            % which ANIN channel to use for event finding
 make_dat_struct_flag = 1;       % whether to make dat structure
     prestim_zscore_flag = 1;        % whether to z-score relative to pre-stim
+    check_anin_flag = 0;            % whether to write ANIN audio files
 plot_all_elecs_flag = 0;        % whether to plot average ERPs for all channels
     plot_raster_flag = 0;           % whether to plot single trial rasters
+save_dat_flag = 1;              % whether to save dat.mat file
 
 % time variables
 timeLim = [0.5 1];                      % time limits (sec) of epoching
@@ -106,6 +111,9 @@ if find_events_flag
                 [],...
                 1);
             
+            if length(evnt) ~= length(find(behav.block == b))
+                fprintf('Incorrect number of trials found for this block\n');
+            end
             evnts = [evnts evnt];
             allEvents = [allEvents evnts];
             
@@ -114,6 +122,14 @@ if find_events_flag
             else
                 save([rootdir '/../../../userdata/matt_l/mandarin/' subj '/data/' subj '_dat.mat'],'dat','-v7.3');
             end
+        end
+    end
+    
+    % check event numbers
+    for i = 1:length(blocks)
+        load([rootdir '/' subj '/' subj '_' blocks{b} '/Analog/evnts.mat']);
+        if length(evnt) ~= length(find(behav.block == b))
+            fprintf('Incorrect number of trials found for %s\n',blocks{b});
         end
     end
 end
@@ -160,7 +176,14 @@ if make_dat_struct_flag
     dat.hg_feedback = NaN(length(dirlist),...
         length(round((evnts(1).StartTime * fs/4) - (timeLim(1) * fs/4)):round((evnts(1).StartTime * fs/4) + (timeLim(2) * fs/4))),...
         length(dat.behav.trial));
-
+    
+    if check_anin_flag
+        [~,fs_ANIN] = readhtk([rootdir '/' subj '/' subj '_' blocks{b} '/Analog/ANIN1.htk']);
+        ANIN_chan = NaN(3,...
+            length(round((evnts(1).StartTime * fs_ANIN) - (timeLim(1) * fs_ANIN)):round((evnts(1).StartTime * fs_ANIN) + (timeLim(2) * fs_ANIN)))+1,...
+            length(dat.behav.trial));
+    end
+    
     for b = 1:length(blocks)
         fprintf('Block [%d] of [%d]\n',b,length(blocks));
         dirlist_tmp = dir([rootdir '/' subj '/' subj '_' blocks{b} '/HilbAA_70to150_8band/']);
@@ -242,12 +265,39 @@ if make_dat_struct_flag
                 end
             end
         end
+        
+        % collect ANIN chans for later checking
+        if check_anin_flag
+            if b == 1
+                l = 1;
+            else
+                l = length(find(ismember(dat.behav.block,1:b-1)))+1;
+            end
+            
+            for anCh = 1:size(ANIN_chan,1)
+                [d_ANIN,fs_ANIN] = readhtk([rootdir '/' subj '/' subj '_' blocks{b} '/Analog/ANIN' num2str(anCh) '.htk']);
+                
+                for j = 1:size(evnts,2)
+                    if ~ismember(j,badTrials)
+                        current_stim = find(strcmpi([dat.behav.syllable{l} num2str(dat.behav.tone(l)) '-' dat.behav.speaker{l} 'N'],stimInfo.stim));
+                        ANIN_chan(anCh,:,l) = d_ANIN(ceil(ceil((evnts(j).StartTime * fs_ANIN)) - (timeLim(1) * fs_ANIN)):ceil(ceil((evnts(j).StartTime * fs_ANIN)) + (timeLim(2) * fs_ANIN)));
+                        
+                        l = l + 1;
+                    end
+                end
+            end
+        end
     end
     dat.gridOrient = [];
     dat.badChans = badChans;
     dat.time_axis = taxis;
     
-    save([rootdir '/../../../userdata/matt_l/mandarin/' subj '/data/' subj '_dat.mat'],'dat','-v7.3');
+    if save_dat_flag
+        save([rootdir '/../../../userdata/matt_l/mandarin/' subj '/data/' subj '_dat.mat'],'dat','-v7.3');
+    end
+    if check_anin_flag
+        save([rootdir '/../../../userdata/matt_l/mandarin/' subj '/data/' subj '_anin.mat'],'ANIN_chan','-v7.3');
+    end
 end
 
 %%

@@ -52,7 +52,7 @@ blocks = []; % [1:3 10 12:19];            % which blocks of data to use
 syls = {'bu','di','lu','ma','mi'};  % which syllables to include
 spkrs = {'a','i'};                  % which speakers to include
 tones = [1 2 3 4];                  % which tones to include
-acc = [0];                        % whether to include correct/incorrect trials
+acc = [0 1];                        % whether to include correct/incorrect trials
 
 % time parameters
 time_lim = [-500 1000];
@@ -68,7 +68,7 @@ plot_single_ERP_flag = 0;           % plot one electrode ERP
 plot_single_raster_flag = 0;        % plot one electrode raster
 regression_flag = 1;                % perform regression analysis
     run_regress_flag = 1;               % run linear regression
-    feat_mat = 'height_direction';       % which model to run ('acc','acc_trlsBlk_int',
+    feat_mat = 'height_direction_acc_int';       % which model to run ('acc','acc_trlsBlk_int',
                                         % 'accTrlsNormByBlkInt','accTrlsContInt','accStimsExpInt',
                                         % 'accTonesExpInt','height_direction','height_direction_acc_int',
                                         % 'height_direction_TonesExp_int','toneDV_RT_int','cumsumAcc')
@@ -406,7 +406,7 @@ end
 
 if regression_flag
     
-    bclr = [0 0 0.6 ; 0 0 0 ; 0 0.6 0 ; 0.8 0 0 ; 0.8 0 0.8; 0.6 0.6 0];
+    bclr = [0 0 0.6 ; 0 0 0 ; 0 0.6 0 ; 0.8 0 0 ; 0.8 0 0.8];
             
     %%%% SET UP FEATURE MATRIX
     switch feat_mat
@@ -445,7 +445,7 @@ if regression_flag
             X = [ones(size(plot_trls,1),1) dat.behav.pitch_height(plot_trls) dat.behav.pitch_direction(plot_trls)];
             fprintf('Feature matrix: height_direction\n');
         case 'height_direction_acc_int'
-            X = [ones(size(plot_trls,1),1) dat.behav.pitch_height(plot_trls) dat.behav.pitch_direction(plot_trls) dat.behav.accuracy(plot_trls) dot(dat.behav.pitch_height(plot_trls),dat.behav.accuracy(plot_trls),2) dot(dat.behav.pitch_direction(plot_trls),dat.behav.accuracy(plot_trls),2)];
+            X = [ones(size(plot_trls,1),1) dat.behav.pitch_height(plot_trls) dat.behav.pitch_direction(plot_trls) dat.behav.accuracy(plot_trls) dot(dat.behav.pitch_height(plot_trls),];
             fprintf('Feature matrix: height_direction_acc\n');
         case 'height_direction_TonesExp_int'
             exposure = zeros(1,length(dat.behav.syllable(plot_trls)));
